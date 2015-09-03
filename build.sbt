@@ -4,8 +4,7 @@ import scalariform.formatter.preferences._
 
 // Dependencies
 val testDependencies = Seq (
-  "org.scalaz.stream"          %% "scalaz-stream"            % "0.7.3" % "test",
-  "org.specs2"                 %% "specs2"                   % "3.3.1" % "test"
+  "org.specs2"                 %% "specs2-core"                   % "3.6.4" % "test"
 )
 
 val rootDependencies = Seq(

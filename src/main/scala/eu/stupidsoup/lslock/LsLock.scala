@@ -11,15 +11,15 @@ import scala.io.Source
 import scala.util.{ Failure, Success, Try }
 
 object LsLock {
-  val FileKeyPattern = """\(dev=(\w{2})(\d{2}),ino=(\d+)\)""".r
+  val FileKeyPattern = """\(dev=(\w{2})?(\d{2}),ino=(\d+)\)""".r
   val ProcLocksPattern = """\d+:\s+\w+\s+\w+\s+\w+\s+(\d+)\s+([a-z0-9:]+)\s+\w+\s+\w+""".r
 
-  def parseFileKey(fileKey: String) = fileKey match {
-    case FileKeyPattern(major, minor, inode) => Option(s"$major:$minor:$inode")
+  private def parseFileKey(fileKey: String) = fileKey match {
+    case FileKeyPattern(major, minor, inode) => Option(s"${Option(major).getOrElse("00")}:$minor:$inode")
     case _ => None
   }
 
-  def getFilesAndInodes(directory: Path): List[(String, Path)] =
+  private def getFilesAndInodes(directory: Path): List[(String, Path)] =
     Files.newDirectoryStream(directory).iterator.asScala.toList.flatMap {
       _ match {
         case path if path.toFile.isDirectory => getFilesAndInodes(path)
@@ -29,14 +29,9 @@ object LsLock {
       }
     }
 
-  def getCurrentFiles(directory: String): Try[List[(String, List[Path])]] = Try {
-    getFilesAndInodes(Paths.get(directory)).groupBy { case (inode, _) => inode }.map {
-      case (inode, files) =>
-        (inode, files.map(_._2))
-    }.toList
-  }
+  private def getCurrentFiles(directory: String): Try[List[(String, Path)]] = Try(getFilesAndInodes(Paths.get(directory)))
 
-  def getLocks(): Try[Map[String, String]] = Try {
+  private def getLocks(): Try[Map[String, String]] = Try {
     Source.fromFile(new File("/proc/locks")).getLines.toList.map {
       _ match {
         case ProcLocksPattern(pid, inode) => Option((inode, pid))
@@ -45,14 +40,19 @@ object LsLock {
     }.flatten.toMap
   }
 
-  def matchDirectory(directory: String): Try[List[(String, List[Path])]] = for {
+  def findLocksInDirectory(directory: String): Try[List[(String, List[Path])]] = for {
     files <- getCurrentFiles(directory)
     locks <- getLocks()
-  } yield files.map { case (inode, paths) => locks.get(inode).map((_, paths)) }.flatten
+  } yield files.map { case (inode, path) => locks.get(inode).map((_, path)) }
+    .flatten
+    .groupBy { case (pid, _) => pid }
+    .map { case (pid, lists) => (pid, lists.map(_._2).sorted) }
+    .toList
+
 }
 
 object LsLockRunner extends App {
-  LsLock.matchDirectory(args(0)) match {
+  LsLock.findLocksInDirectory(args(0)) match {
     case Success(result) => result.foreach {
       case (pid, paths) =>
         println(pid)
