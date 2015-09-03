@@ -89,10 +89,8 @@ class LsLockSpec extends Specification with BeforeAfterAll {
 
     (result must beSuccessfulTry) and
       (result.get.size must beEqualTo(2)) and
-      (result.get(0)._2 must beEqualTo(List(
-        Paths.get(s"$baseDir/one.lock")
-      ))) and
-      (result.get(1)._2 must beEqualTo(List(
+      ((result.get(0)._2 ++ result.get(1)._2).sorted must beEqualTo(List(
+        Paths.get(s"$baseDir/one.lock"),
         Paths.get(s"$baseDir/two.lock")
       )))
   }

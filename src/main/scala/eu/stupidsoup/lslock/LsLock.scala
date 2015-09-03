@@ -23,28 +23,25 @@ object LsLock {
     Files.newDirectoryStream(directory).iterator.asScala.toList.flatMap {
       _ match {
         case path if path.toFile.isDirectory => getFilesAndInodes(path)
-        case path => List(
-          parseFileKey(Files.readAttributes(path, classOf[BasicFileAttributes]).fileKey.toString).map((_, path))
-        ).flatten
+        case path => parseFileKey(Files.readAttributes(path, classOf[BasicFileAttributes]).fileKey.toString).map((_, path)).toList
       }
     }
 
   private def getCurrentFiles(directory: String): Try[List[(String, Path)]] = Try(getFilesAndInodes(Paths.get(directory)))
 
   private def getLocks(): Try[Map[String, String]] = Try {
-    Source.fromFile(new File("/proc/locks")).getLines.toList.map {
+    Source.fromFile(new File("/proc/locks")).getLines.flatMap {
       _ match {
         case ProcLocksPattern(pid, inode) => Option((inode, pid))
         case _ => None
       }
-    }.flatten.toMap
+    }.toMap
   }
 
   def findLocksInDirectory(directory: String): Try[List[(String, List[Path])]] = for {
     files <- getCurrentFiles(directory)
     locks <- getLocks()
-  } yield files.map { case (inode, path) => locks.get(inode).map((_, path)) }
-    .flatten
+  } yield files.flatMap { case (inode, path) => locks.get(inode).map((_, path)) }
     .groupBy { case (pid, _) => pid }
     .map { case (pid, lists) => (pid, lists.map(_._2).sorted) }
     .toList
