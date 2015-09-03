@@ -8,7 +8,8 @@ You may use the language of your choice. Please include instructions for buildin
 
 ### Running instructions
 
-./lslock.sh [directory] to list files
-./lslock-test.sh to run tests
+`./lslock.sh [directory]` to list files
+
+`./lslock-test.sh` to run tests
 
 Requirements: JVM 7 or up, SBT, Linux server (tested on Ubuntu 14.04 LTS)
