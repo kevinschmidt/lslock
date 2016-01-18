@@ -1,4 +1,4 @@
-# lslock for Mesosphere
+# lslock
 
 ### Task
 
